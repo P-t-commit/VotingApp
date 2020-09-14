@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+    {% block content %}
+        {% if current_user.username == 'Admin' %}
+            <div class="container">
+                <div class="jumbotron text-center">
+                    <h1>Welcome admin</h1>
+                    <p>Current vote status:</p>
+            
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Candidate Name</th>
+                                <th>Total Votes</th>
+                            </tr>
+                        </thead>
+            
+                        <tbody>
+                            {% for candidate in candidate_list %}
+                            <tr>
+                                <td>{{ candidate.candidate_name }}</td>
+                                <td>{{ candidate.votes }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+            
+                </div>
+            </div>
+        {% else %}
+            <div class="container">
+                <div class="jumbotron text-center">
+                        <h1>Welcome {{ current_user.username }}</h1>
+                        <p>Vote for best candidate:</p>
+                        <form method="POST" action="{{ url_for('dashboard') }} ">
+                            {% for candidate in candidate_list %}
+                            <div class="radio">
+                                <label><input type="radio" name="candidate" value="{{ candidate.candidate_name }}">{{ candidate.candidate_name }}</label>
+                            </div>
+                            {% endfor %}
+            
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </form>
+                </div>
+            </div>
+        {% endif %}    
+    {% endblock content %}
+

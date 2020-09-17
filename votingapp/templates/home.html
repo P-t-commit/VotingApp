@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
     {% block content %}
         {% if current_user.is_authenticated %}
-            {% if current_user.username ==  'Admin' %}
+            {% if current_user.email ==  'admin@email.com' %}
                 <h1>Please go to <a href="{{ url_for('dashboard') }}">dashboard</a> to check votes</h1>
             {% else %}
                 <h1>Please go to the <a href="{{ url_for('dashboard') }}">dashboard</a> to cast your vote if you haven't already</h1>

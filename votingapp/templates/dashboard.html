@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
     {% block content %}
-        {% if current_user.username == 'Admin' %}
+        {% if current_user.email == 'admin@email.com' %}
             <div class="container">
                 <div class="jumbotron text-center">
                     <h1>Welcome admin</h1>
@@ -29,7 +29,7 @@
         {% else %}
             <div class="container">
                 <div class="jumbotron text-center">
-                        <h1>Welcome {{ current_user.username }}</h1>
+                        <h1>Welcome user with email id - {{ current_user.email }}</h1>
                         <p>Vote for best candidate:</p>
                         <form method="POST" action="{{ url_for('dashboard') }} ">
                             {% for candidate in candidate_list %}

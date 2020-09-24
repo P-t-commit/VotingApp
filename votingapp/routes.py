@@ -9,6 +9,8 @@ import cgi
 LR.API_KEY = "e91795bb-fa16-40b6-b9bd-1d8f120333de"
 LR.API_SECRET = "e19e43cc-7ebe-42a1-999d-f3a271d12bd8"
 
+LR.API_REQUEST_SIGNING = True
+
 login_radius = LR()
 
 
@@ -42,6 +44,8 @@ def home():
         if User.query.filter_by(email=email_id).first() is None:
             db.session.add(user)
             db.session.commit()
+        else:
+            user = User.query.filter_by(email=email_id).first()
         login_user(user)
     except Exception as e:
         print(e)

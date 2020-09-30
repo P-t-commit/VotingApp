@@ -1,43 +1,49 @@
-from votingapp import db, login_manager
+from votingapp import login_manager, cluster
 from flask_login import UserMixin
+import uuid
 
-@login_manager.user_loader 
+@login_manager.user_loader
 def load_user(user_id):
-    try:
-        print("i am here")
-        return User.query.get(int(user_id))
-    except Exception as e:
-        print("try was unsuccessful")
-        print(e)
+    my_user = User.get_by_id(user_id)
+    if my_user is not None:
+        return my_user
+    else:
+        return None
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key = True)
-    #username = db.Column(db.String(20), unique=True, nullable = False)
-    email = db.Column(db.String(200), unique=True, nullable = False)
-    # password = db.Column(db.String(60), nullable = False)
-    hasVoted = db.Column(db.Boolean, nullable=False, default=False)
 
-    def __repr__(self):
-        return f"User('{self.email}')"
-        # return f"User('{self.username}', '{self.email}')"
-
-    def __init__(self, email):
-        # self.username = username
-        # self.password = password
+class User(UserMixin):
+    
+    def __init__(self, email, hasVoted, _id):
         self.email = email
+        self.hasVoted = hasVoted
+        self._id = _id
 
-    # def __init__(self, username, password, email):
-    #     self.username = username
-    #     self.password = password
-    #     self.email = email
+    def is_authenticated(self):
+        return True
+    
+    def is_active(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
 
-class Votes(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    candidate_name = db.Column(db.String(20), unique=True, nullable=False)
-    votes = db.Column(db.Integer, nullable=False, default=0)
+    def get_id(self):
+        return self._id
 
-    def __init__(self, candidate_name):
-        self.candidate_name = candidate_name
+    @classmethod
+    def get_by_email(cls,email):
+        db = cluster["Vote_App"]
+        Database = db["User"]
+        data = Database.find_one({"email" : email})
+        if data is not None:
+            return cls(**data)
 
-    def __repr__(self):
-        return f"CandidateVotes('{self.candidate_name}', '{self.votes}')"
+    @classmethod
+    def get_by_id(cls,_id):
+        db = cluster["Vote_App"]
+        Database = db["User"]
+        data = Database.find_one({"_id" : _id})
+        if data is not None:
+            return cls(**data)
+
+

@@ -1,9 +1,12 @@
 from flask import render_template, url_for, flash, redirect, request
-from votingapp import app, db, bcrypt
+import pymongo
+from pymongo import MongoClient
+from votingapp import app, cluster
 from votingapp.forms import RegistrationForm, LoginForm
-from votingapp.models import User, Votes
+from votingapp.models import User
 from flask_login import login_user, current_user, logout_user, login_required
 from LoginRadius import LoginRadius as LR
+import uuid
 import cgi
 
 LR.API_KEY = "e91795bb-fa16-40b6-b9bd-1d8f120333de"
@@ -14,39 +17,32 @@ LR.API_REQUEST_SIGNING = True
 login_radius = LR()
 
 
-# @app.before_first_request
-# def setup():
-#     # Drop tables if exists
-#     db.drop_all()
-
-#     # Creating tables
-#     db.create_all()
-
-#     #Inserting rows in candidatevotes table
-#     db.session.add(Votes(candidate_name='Candidate A'))
-#     db.session.add(Votes(candidate_name='Candidate B'))
-#     db.session.add(Votes(candidate_name='Candidate C'))
-#     db.session.add(Votes(candidate_name='Candidate D'))
-    
-#     # Commit
-#     db.session.commit()
-
 
 @app.route("/")
 @app.route("/home")
 def home():
     access_token = request.args.get("token")
+    print(access_token)
     fields = 'email'
-    try:
+    print("this is done")
+    try:    
         profile = login_radius.authentication.get_profile_by_access_token(access_token, fields)
-        email_id = profile['Email'][0]['Value']
-        user = User(email = email_id)
-        if User.query.filter_by(email=email_id).first() is None:
-            db.session.add(user)
-            db.session.commit()
-        else:
-            user = User.query.filter_by(email=email_id).first()
-        login_user(user)
+        email = profile['Email'][0]['Value']
+        print("ab email print hoga\n")
+        print(email)
+        Database = cluster["Vote_App"]
+        usrDb = Database["User"]
+        user = usrDb.find_one({"email": email})
+        print(user)
+        if user is None:
+            print("\nhere\n")
+            add_user = {"email": email, "hasVoted": False, "_id": uuid.uuid4().hex}
+            usrDb.insert_one(add_user)
+        user = usrDb.find_one({"email": email})
+        print(user)
+        print("\nyaha tak aya\n")
+        my_user = User(user["email"], user["hasVoted"], user["_id"])
+        login_user(my_user)
     except Exception as e:
         print(e)
     return render_template('home.html')
@@ -58,30 +54,11 @@ def about():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        flash('Your account has been created! You can now login', 'success')
-        return redirect(url_for('login'))
     return redirect("https://dev-1234qwerty.hub.loginradius.com/auth.aspx?action=register&return_url=http://localhost:5000/")
-    #return render_template('register.html', title = 'Register', form = form)
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
-            login_user(user, remember=form.remember.data)
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('home'))
-        else:
-            flash('Login unsuccessful. Please check email and password', 'danger')
     return redirect("https://dev-1234qwerty.hub.loginradius.com/auth.aspx?action=login&return_url=http://localhost:5000/")
-    #return render_template('login.html', title = 'Login', form = form)
 
 @app.route("/logout")
 def logout():
@@ -96,7 +73,10 @@ def dashboard():
         # Check if user has selected any candiate
         if 'candidate' in request.form:
             # Check if user has already submitted the vote
-            hasAlreadyVoted = User.query.filter_by(email = current_user.email).first().hasVoted
+            Database = cluster["Vote_App"]
+            usrDb = Database["User"]
+            usr = usrDb.find_one({"email": current_user.email})
+            hasAlreadyVoted = usr["hasVoted"]
             if hasAlreadyVoted:
                 flash("You already voted for the best candidate", 'danger')
                 return redirect(url_for('home'))
@@ -104,14 +84,13 @@ def dashboard():
                 candidate_name = request.form['candidate']
 
                 # Increasing the vote by 1
-                voted_candidate = Votes.query.filter_by(candidate_name=candidate_name).first()
-                voted_candidate.votes = voted_candidate.votes + 1
+                votesDb = Database["Votes"]
+                update_1 = votesDb.update_one({"candidates":candidate_name}, {"$inc":{"votes":1}})
                 
                 # Setting true that user has submitted the vote
-                user_voted = User.query.filter_by(email= current_user.email).first()
-                user_voted.hasVoted = True
+                update_2 = usrDb.update_one({"email":current_user.email}, {"$set":{"hasVoted":True}})
                 
-                db.session.commit()
+                # db.session.commit()
 
                 flash("Thank you for the vote", 'success')
                 return redirect(url_for('home'))
@@ -120,5 +99,8 @@ def dashboard():
             return redirect(url_for('dashboard'))
     else:
         # Fetching the candidates name in case of GET request
-        candidate_list = Votes.query.all()
+        Database = cluster["Vote_App"]
+        votesDb = Database["Votes"]
+        candidate_list = list(votesDb.find({}))
+        print(candidate_list)
         return render_template('dashboard.html', candidate_list=candidate_list)

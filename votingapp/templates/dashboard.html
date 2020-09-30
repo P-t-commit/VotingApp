@@ -17,7 +17,7 @@
                         <tbody>
                             {% for candidate in candidate_list %}
                             <tr>
-                                <td>{{ candidate.candidate_name }}</td>
+                                <td>{{ candidate.candidates }}</td>
                                 <td>{{ candidate.votes }}</td>
                             </tr>
                             {% endfor %}
@@ -34,7 +34,7 @@
                         <form method="POST" action="{{ url_for('dashboard') }} ">
                             {% for candidate in candidate_list %}
                             <div class="radio">
-                                <label><input type="radio" name="candidate" value="{{ candidate.candidate_name }}">{{ candidate.candidate_name }}</label>
+                                <label><input type="radio" name="candidate" value="{{ candidate.candidates }}">{{ candidate.candidates }}</label>
                             </div>
                             {% endfor %}
             
